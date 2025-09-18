@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>ASPortable Solver</title>
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'wasm-unsafe-eval'; object-src 'self'">
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; margin: 12px; min-width: 360px; }
+    textarea { width: 100%; height: 140px; }
+    input[type="text"] { width: 100%; }
+    pre { white-space: pre-wrap; background: #f6f6f6; padding: 8px; border-radius: 8px; }
+    button { margin-top: 8px; padding: 8px 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h3>ASPortable Solver</h3>
+
+  <p>ASP program:</p>
+  <textarea id="code">% example
+a | b.
+:- a, b.
+</textarea>
+
+  <div style="margin-top:8px;">
+    <label>Number of models (0 = all):</label>
+    <input id="n" type="text" value="0" />
+  </div>
+
+  <button id="run">Solve</button>
+
+  <p><strong>Output:</strong></p>
+  <pre id="out"></pre>
+
+  <script src="popup.js"></script>
+</body>
+</html>
