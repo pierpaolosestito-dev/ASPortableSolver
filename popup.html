@@ -1,35 +1,273 @@
 <!doctype html>
-<html>
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <title>ASPortable Solver</title>
   <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'wasm-unsafe-eval'; object-src 'self'">
+
   <style>
-    body { font: 14px/1.4 system-ui, sans-serif; margin: 12px; min-width: 360px; }
-    textarea { width: 100%; height: 140px; }
-    input[type="text"] { width: 100%; }
-    pre { white-space: pre-wrap; background: #f6f6f6; padding: 8px; border-radius: 8px; }
-    button { margin-top: 8px; padding: 8px 12px; border-radius: 8px; }
+    /* ---------- Design tokens (default: dark) ---------- */
+    :root {
+      --bg: #0b0d10;
+      --panel: #11151a;
+      --panel-2: #0f1317;
+      --text: #e8eef4;
+      --muted: #a7b2bf;
+      --primary: #6aa9ff;
+      --primary-2: #3e7fff;
+      --ok: #2dd4bf;
+      --ring: 0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      --radius: 14px;
+      --border: 1px solid color-mix(in oklab, #ffffff 10%, transparent);
+      --code-bg: #0a0e12;
+      --scroll: color-mix(in oklab, var(--primary) 35%, #2a3441);
+    }
+
+    /* Override when user picks light theme via toggle */
+    [data-theme="light"] {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --panel-2: #f7f9fc;
+      --text: #0e141b;
+      --muted: #516174;
+      --primary: #2563eb;
+      --primary-2: #1d4ed8;
+      --ok: #089981;
+      --shadow: 0 12px 28px rgba(2, 6, 23, 0.08);
+      --code-bg: #f3f6fb;
+      --scroll: #cbd5e1;
+      --border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    /* If user hasn't chosen, fall back to prefers-color-scheme on load via JS */
+
+    /* ---------- Base ---------- */
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      padding: 16px;
+      min-width: 380px;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at -20% -20%, rgba(59,130,246,.25), transparent 60%),
+        radial-gradient(1200px 600px at 120% -10%, rgba(14,165,233,.22), transparent 60%),
+        var(--bg);
+      font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    .card {
+      background:
+        linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, transparent), color-mix(in oklab, var(--panel-2) 88%, transparent)) padding-box,
+        linear-gradient(135deg, color-mix(in oklab, var(--primary) 40%, transparent), transparent 60%) border-box;
+      border: var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .left {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .right {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .badge {
+      font-size: 11px;
+      letter-spacing: .3px;
+      color: var(--muted);
+      transition: color .2s ease;
+    }
+    .badge.ok { color: var(--ok); font-weight: 600; }
+    h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--text);
+    }
+
+    /* Theme toggle button */
+    #theme-toggle {
+      appearance: none;
+      border: var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: box-shadow .2s ease, color .2s ease, border-color .2s ease;
+    }
+    #theme-toggle:hover {
+      color: var(--text);
+      box-shadow: var(--ring);
+      border-color: color-mix(in oklab, var(--primary) 35%, transparent);
+    }
+
+    label, p { color: var(--muted); margin: 10px 0 6px; }
+
+    /* ---------- Inputs ---------- */
+    .field, textarea, input[type="text"] {
+      width: 100%;
+      border-radius: 12px;
+      border: var(--border);
+      background: color-mix(in oklab, var(--panel) 92%, transparent);
+      color: var(--text);
+      outline: none;
+      transition: box-shadow .2s ease, border-color .2s ease, background .2s ease;
+    }
+    textarea {
+      padding: 12px 12px 14px;
+      height: 150px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      background: var(--code-bg);
+    }
+    input[type="text"] { padding: 10px 12px; }
+    textarea:focus, input[type="text"]:focus {
+      box-shadow: var(--ring);
+      border-color: color-mix(in oklab, var(--primary) 35%, transparent);
+    }
+
+    /* ---------- Buttons ---------- */
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    button {
+      appearance: none;
+      border: 0;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-weight: 600;
+      letter-spacing: .2px;
+      cursor: pointer;
+      transition: transform .06s ease, filter .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
+    }
+    /* Primary */
+    #run {
+      background: linear-gradient(180deg, var(--primary), var(--primary-2));
+      color: white;
+      box-shadow: 0 6px 18px color-mix(in oklab, var(--primary) 30%, transparent);
+    }
+    #run:hover { filter: brightness(1.05); }
+    #run:active { transform: translateY(1px); }
+    /* Secondary (ghost) */
+    .ghost {
+      background: transparent;
+      color: var(--muted);
+      border: var(--border);
+    }
+    .ghost:hover {
+      color: var(--text);
+      border-color: color-mix(in oklab, var(--primary) 35%, transparent);
+      box-shadow: var(--ring);
+    }
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+      filter: none;
+    }
+
+    /* ---------- Output ---------- */
+    .output {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: var(--code-bg);
+      border: var(--border);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12.5px;
+      white-space: pre-wrap;
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    /* Scrollbar nicer */
+    .output::-webkit-scrollbar, textarea::-webkit-scrollbar { width: 10px; height: 10px; }
+    .output::-webkit-scrollbar-thumb, textarea::-webkit-scrollbar-thumb {
+      background: var(--scroll);
+      border-radius: 20px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+    .output::-webkit-scrollbar-track, textarea::-webkit-scrollbar-track { background: transparent; }
+
+    /* Tiny helper row */
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: end;
+      margin-top: 8px;
+    }
+
+    .hint { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    .ok { color: var(--ok); font-weight: 600; }
+
+    /* Output header row (with Copy / Clear) */
+    .out-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+    .out-actions { display: flex; gap: 8px; }
   </style>
 </head>
-<body>
-  <h3>ASPortable Solver</h3>
 
-  <p>ASP program:</p>
-  <textarea id="code">% example
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="left">
+        <h3>ASPortable Solver</h3>
+        <span class="badge" id="status-badge">offline • WebAssembly</span>
+      </div>
+      <div class="right">
+        <button id="theme-toggle" title="Toggle theme">☾ Dark</button>
+      </div>
+    </div>
+
+    <p>ASP program:</p>
+    <textarea id="code" spellcheck="false">% example
 a | b.
 :- a, b.
 </textarea>
 
-  <div style="margin-top:8px;">
-    <label>Number of models (0 = all):</label>
-    <input id="n" type="text" value="0" />
+    <div class="row">
+      <div>
+        <label for="n">Number of models (<code>0</code> = all):</label>
+        <input id="n" type="text" class="field" value="0" inputmode="numeric" />
+      </div>
+      <div class="actions">
+        <button id="run" disabled>Solve</button>
+      </div>
+    </div>
+
+    <p class="hint">Tip: Use <code>|</code> for disjunction; add constraints with <code>:- ...</code>.</p>
+
+    <div class="out-head">
+      <p style="margin:0;"><strong>Output</strong></p>
+      <div class="out-actions">
+        <button id="copy" class="ghost" title="Copy output">Copy output</button>
+        <button id="clear" class="ghost" title="Clear output">Clear</button>
+      </div>
+    </div>
+    <pre id="out" class="output"></pre>
   </div>
-
-  <button id="run">Solve</button>
-
-  <p><strong>Output:</strong></p>
-  <pre id="out"></pre>
 
   <script src="popup.js"></script>
 </body>
